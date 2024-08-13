@@ -14,6 +14,15 @@ import PIL
 import dateparser
 
 def rawToDf(file):
+    """
+    Convert a raw text file into a pandas DataFrame.
+
+    Args:
+        file (str): Path to the raw text file.
+
+    Returns:
+        pd.DataFrame: A DataFrame with 'date_time' and 'user_msg' columns.
+    """
     with open(file, 'r',encoding='utf8') as raw_data:
         raw_string = ' '.join(raw_data.read().split('\n')) # converting the list split by newline char. as one whole string as there can be multi-line messages
         user_msg = re.split('\d{1,2}/\d{1,2}/\d{2,4}, \d:\d{2} .{2} - ', raw_string) [1:] # splits at all the date-time pattern, resulting in list of all the messages with user names
@@ -32,27 +41,28 @@ def rawToDf(file):
 
     # split user and msg
     usernames = []
-    msgs = []
-    for i in df['user_msg']:
-        a = re.split('([\w\W]+?):\s', i) # lazy pattern match to first {user_name}: pattern and spliting it aka each msg from a user
-        if(a[1:]): # user typed messages
-            usernames.append(a[1])
-            msgs.append(a[2])
-        else: # other notifications in the group(eg: someone was added, some left ...)
-            usernames.append("grp_notif")
-            msgs.append(a[0])
-
-    # creating new columns
+    messages = []
+    for i in range(len(user_msg)):
+        username = re.split(', \d{1,2}/\d{1,2}/\d{2,4}, \d:\d{2} .{2} - ', user_msg[i])[0]
+        message = re.split(', \d{1,2}/\d{1,2}/\d{2,4}, \d:\d{2} .{2} - ', user_msg[i])[1]
+        usernames.append(username)
+        messages.append(message)
 
     df['user'] = usernames
-    df['msg'] = msgs
-
-    # dropping the old user_msg col.
-    df.drop('user_msg', axis=1, inplace=True)
+    df['msg'] = messages
 
     return df
 
 def clean_df(df):
+    """
+    Clean the DataFrame by removing group notifications and images.
+
+    Args:
+        df (pd.DataFrame): The DataFrame to be cleaned.
+
+    Returns:
+        pd.DataFrame: The cleaned DataFrame.
+    """
     grp_notif = df[df['user']=="grp_notif"] #no. of grp notifications
     images = df[df['msg']=="<Media omitted> "] #no. of images, images are represented by <media omitted>
     df.drop(images.index, inplace=True) #removing images
@@ -61,6 +71,18 @@ def clean_df(df):
 
 
 def create_user_wordcloud(messages, image_path, user, save_path):
+    """
+    Create a word cloud for a given user.
+
+    Args:
+        messages (pd.DataFrame): The DataFrame with 'user' and 'msg' columns.
+        image_path (str): Path to the image used as a mask.
+        user (str): The username for which the word cloud is created.
+        save_path (str): Path where the word cloud will be saved.
+
+    Returns:
+        None
+    """
     char_mask = np.array(PIL.Image.open(image_path))
     char_mask[char_mask == 0] = 255 #convert no background to white
     image_colors = ImageColorGenerator(char_mask)
@@ -86,6 +108,18 @@ def create_user_wordcloud(messages, image_path, user, save_path):
 
 
 def create_wordcloud_user_whatsapp(file, image_path, user, save_path):
+    """
+    Create a word cloud for a given user from WhatsApp messages.
+
+    Args:
+        file (str): Path to the raw text file.
+        image_path (str): Path to the image used as a mask.
+        user (str): The username for which the word cloud is created.
+        save_path (str): Path where the word cloud will be saved.
+
+    Returns:
+        None
+    """
     df = rawToDf(file)
     messages = clean_df(df)
     pillow_wc = create_user_wordcloud(messages, image_path, user, save_path)
