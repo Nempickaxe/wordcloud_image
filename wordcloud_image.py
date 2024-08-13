@@ -11,6 +11,7 @@ from wordcloud import WordCloud, STOPWORDS, ImageColorGenerator
 import emoji
 from collections import Counter
 import PIL
+import dateparser
 
 def rawToDf(file):
     with open(file, 'r',encoding='utf8') as raw_data:
